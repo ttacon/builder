@@ -37,9 +37,6 @@ const (
 	opRead                   // Any other read operation.
 )
 
-// ErrTooLarge is passed to panic if memory cannot be allocated to store data in a buffer.
-var ErrTooLarge = errors.New("insertablebuffer.Buf: too large")
-
 // Bytes returns a slice of the contents of the unread portion of the buffer;
 // len(b.Bytes()) == b.Len().  If the caller changes the contents of the
 // returned slice, the contents of the buffer will change provided there
@@ -144,12 +141,6 @@ func (b *Buf) WriteString(s string) (n int, err error) {
 	return copy(b.buf[m:], s), nil
 }
 
-// MinRead is the minimum slice size passed to a Read call by
-// Buffer.ReadFrom.  As long as the Buffer has at least MinRead bytes beyond
-// what is required to hold the contents of r, ReadFrom will not grow the
-// underlying buffer.
-const MinRead = 512
-
 // ReadFrom reads data from r until EOF and appends it to the buffer, growing
 // the buffer as needed. The return value n is the number of bytes read. Any
 // error except io.EOF encountered during the read is also returned. If the
@@ -161,13 +152,13 @@ func (b *Buf) ReadFrom(r io.Reader) (n int64, err error) {
 		b.Truncate(0)
 	}
 	for {
-		if free := cap(b.buf) - len(b.buf); free < MinRead {
+		if free := cap(b.buf) - len(b.buf); free < bytes.MinRead {
 			// not enough space at end
 			newBuf := b.buf
-			if b.off+free < MinRead {
+			if b.off+free < bytes.MinRead {
 				// not enough space using beginning of buffer;
 				// double buffer capacity
-				newBuf = makeSlice(2*cap(b.buf) + MinRead)
+				newBuf = makeSlice(2*cap(b.buf) + bytes.MinRead)
 			}
 			copy(newBuf, b.buf[b.off:])
 			b.buf = newBuf[:len(b.buf)-b.off]
@@ -192,7 +183,7 @@ func makeSlice(n int) []byte {
 	// If the make fails, give a known error.
 	defer func() {
 		if recover() != nil {
-			panic(ErrTooLarge)
+			panic(bytes.ErrTooLarge)
 		}
 	}()
 	return make([]byte, n)
@@ -436,8 +427,8 @@ func (b *Buf) Insert(i int, p []byte) (n int, err error) {
 	if len(b.buf)-m != len(p) {
 		return -1, ErrFailedToGrow
 	}
-	copy(b.buf[len(p):], b.buf[:len(b.buf)-len(p)])
-	return copy(b.buf[0:len(p)], p), nil
+	copy(b.buf[i+len(p):], b.buf[i:len(b.buf)-len(p)])
+	return copy(b.buf[i:i+len(p)], p), nil
 }
 
 // InsertString inserts the string at the desired position, growing the buffer
@@ -455,4 +446,17 @@ func (b *Buf) InsertString(i int, p string) (n int, err error) {
 	}
 	copy(b.buf[i+len(p):], b.buf[i:len(b.buf)-len(p)])
 	return copy(b.buf[i:i+len(p)], p), nil
+}
+
+// ByteAt returns the byte at the given index. It returns
+// ErrInvalidIndex if the given index is outside the buffer's
+// length. There is no RuneAt currently, for I'm unsure
+// what the desired behaviour should be (read rune by rune
+// until we get to the ith rune, read the rune starting at i).
+func (b *Buf) ByteAt(i int) (byte, error) {
+	if i < 0 || i > len(b.buf) {
+		return 0, ErrInvalidIndex
+	}
+
+	return b.buf[i], nil
 }
