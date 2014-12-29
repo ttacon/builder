@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package insertablebuffer
+package builder
 
 import (
 	. "bytes"
@@ -26,7 +26,7 @@ func init() {
 }
 
 // Verify that contents of buf match the string s.
-func check(t *testing.T, testname string, buf *Buf, s string) {
+func check(t *testing.T, testname string, buf *Builder, s string) {
 	bytes := buf.Bytes()
 	str := buf.String()
 	if buf.Len() != len(bytes) {
@@ -49,7 +49,7 @@ func check(t *testing.T, testname string, buf *Buf, s string) {
 // Fill buf through n writes of string fus.
 // The initial contents of buf corresponds to the string s;
 // the result is the final contents of buf returned as a string.
-func fillString(t *testing.T, testname string, buf *Buf, s string, n int, fus string) string {
+func fillString(t *testing.T, testname string, buf *Builder, s string, n int, fus string) string {
 	check(t, testname+" (fill 1)", buf, s)
 	for ; n > 0; n-- {
 		m, err := buf.WriteString(fus)
@@ -68,7 +68,7 @@ func fillString(t *testing.T, testname string, buf *Buf, s string, n int, fus st
 // Fill buf through n writes of byte slice fub.
 // The initial contents of buf corresponds to the string s;
 // the result is the final contents of buf returned as a string.
-func fillBytes(t *testing.T, testname string, buf *Buf, s string, n int, fub []byte) string {
+func fillBytes(t *testing.T, testname string, buf *Builder, s string, n int, fub []byte) string {
 	check(t, testname+" (fill 1)", buf, s)
 	for ; n > 0; n-- {
 		m, err := buf.Write(fub)
@@ -84,19 +84,19 @@ func fillBytes(t *testing.T, testname string, buf *Buf, s string, n int, fub []b
 	return s
 }
 
-func TestNewBuffer(t *testing.T) {
-	buf := New(testBytes)
-	check(t, "New", buf, data)
+func TestNewBuilder(t *testing.T) {
+	buf := NewBuilder(testBytes)
+	check(t, "NewBuilder", buf, data)
 }
 
-func TestNewBufferString(t *testing.T) {
-	buf := NewBufString(data)
-	check(t, "NewBufString", buf, data)
+func TestNewBuilderString(t *testing.T) {
+	buf := NewBuilderString(data)
+	check(t, "NewBuilderString", buf, data)
 }
 
 // Empty buf through repeated reads into fub.
 // The initial contents of buf corresponds to the string s.
-func empty(t *testing.T, testname string, buf *Buf, s string, fub []byte) {
+func empty(t *testing.T, testname string, buf *Builder, s string, fub []byte) {
 	check(t, testname+" (empty 1)", buf, s)
 
 	for {
@@ -115,7 +115,7 @@ func empty(t *testing.T, testname string, buf *Buf, s string, fub []byte) {
 }
 
 func TestBasicOperations(t *testing.T) {
-	var buf = New(nil)
+	var buf = NewBuilder(nil)
 
 	for i := 0; i < 5; i++ {
 		check(t, "TestBasicOperations (1)", buf, "")
@@ -169,7 +169,7 @@ func TestBasicOperations(t *testing.T) {
 }
 
 func TestLargeStringWrites(t *testing.T) {
-	var buf = New(nil)
+	var buf = NewBuilder(nil)
 	limit := 30
 	if testing.Short() {
 		limit = 9
@@ -182,7 +182,7 @@ func TestLargeStringWrites(t *testing.T) {
 }
 
 func TestLargeByteWrites(t *testing.T) {
-	var buf = New(nil)
+	var buf = NewBuilder(nil)
 	limit := 30
 	if testing.Short() {
 		limit = 9
@@ -195,7 +195,7 @@ func TestLargeByteWrites(t *testing.T) {
 }
 
 func TestLargeStringReads(t *testing.T) {
-	var buf = New(nil)
+	var buf = NewBuilder(nil)
 	for i := 3; i < 30; i += 3 {
 		s := fillString(t, "TestLargeReads (1)", buf, "", 5, data[0:len(data)/i])
 		empty(t, "TestLargeReads (2)", buf, s, make([]byte, len(data)))
@@ -204,7 +204,7 @@ func TestLargeStringReads(t *testing.T) {
 }
 
 func TestLargeByteReads(t *testing.T) {
-	var buf = New(nil)
+	var buf = NewBuilder(nil)
 	for i := 3; i < 30; i += 3 {
 		s := fillBytes(t, "TestLargeReads (1)", buf, "", 5, testBytes[0:len(testBytes)/i])
 		empty(t, "TestLargeReads (2)", buf, s, make([]byte, len(data)))
@@ -213,7 +213,7 @@ func TestLargeByteReads(t *testing.T) {
 }
 
 func TestMixedReadsAndWrites(t *testing.T) {
-	var buf = New(nil)
+	var buf = NewBuilder(nil)
 	s := ""
 	for i := 0; i < 50; i++ {
 		wlen := rand.Intn(len(data))
@@ -232,27 +232,27 @@ func TestMixedReadsAndWrites(t *testing.T) {
 }
 
 func TestNil(t *testing.T) {
-	var b *Buf
+	var b *Builder
 	if b.String() != "<nil>" {
 		t.Errorf("expected <nil>; got %q", b.String())
 	}
 }
 
 func TestReadFrom(t *testing.T) {
-	var buf = New(nil)
+	var buf = NewBuilder(nil)
 	for i := 3; i < 30; i += 3 {
 		s := fillBytes(t, "TestReadFrom (1)", buf, "", 5, testBytes[0:len(testBytes)/i])
-		var b = New(nil)
+		var b = NewBuilder(nil)
 		b.ReadFrom(buf)
 		empty(t, "TestReadFrom (2)", b, s, make([]byte, len(data)))
 	}
 }
 
 func TestWriteTo(t *testing.T) {
-	var buf = New(nil)
+	var buf = NewBuilder(nil)
 	for i := 3; i < 30; i += 3 {
 		s := fillBytes(t, "TestWriteTo (1)", buf, "", 5, testBytes[0:len(testBytes)/i])
-		var b = New(nil)
+		var b = NewBuilder(nil)
 		buf.WriteTo(b)
 		empty(t, "TestWriteTo (2)", b, s, make([]byte, len(data)))
 	}
@@ -262,7 +262,7 @@ func TestRuneIO(t *testing.T) {
 	const NRune = 1000
 	// Built a test slice while we write the data
 	b := make([]byte, utf8.UTFMax*NRune)
-	var buf = New(nil)
+	var buf = NewBuilder(nil)
 	n := 0
 	for r := rune(0); r < NRune; r++ {
 		size := utf8.EncodeRune(b[n:], r)
@@ -317,7 +317,7 @@ func TestNext(t *testing.T) {
 				// Check that if we start with a buffer
 				// of length j at offset i and ask for
 				// Next(k), we get the right bytes.
-				buf := New(b[0:j])
+				buf := NewBuilder(b[0:j])
 				n, _ := buf.Read(tmp[0:i])
 				if n != i {
 					t.Fatalf("Read %d returned %d", i, n)
@@ -357,7 +357,7 @@ var readBytesTests = []struct {
 
 func TestReadBytes(t *testing.T) {
 	for _, test := range readBytesTests {
-		buf := NewBufString(test.buffer)
+		buf := NewBuilderString(test.buffer)
 		var err error
 		for _, expected := range test.expected {
 			var bytes []byte
@@ -377,7 +377,7 @@ func TestReadBytes(t *testing.T) {
 
 func TestReadString(t *testing.T) {
 	for _, test := range readBytesTests {
-		buf := NewBufString(test.buffer)
+		buf := NewBuilderString(test.buffer)
 		var err error
 		for _, expected := range test.expected {
 			var s string
@@ -402,7 +402,7 @@ func BenchmarkReadString(b *testing.B) {
 	data[n-1] = 'x'
 	b.SetBytes(int64(n))
 	for i := 0; i < b.N; i++ {
-		buf := New(data)
+		buf := NewBuilder(data)
 		_, err := buf.ReadString('x')
 		if err != nil {
 			b.Fatal(err)
@@ -417,7 +417,7 @@ func TestGrow(t *testing.T) {
 	for _, startLen := range []int{0, 100, 1000, 10000, 100000} {
 		xBytes := Repeat(x, startLen)
 		for _, growLen := range []int{0, 100, 1000, 10000, 100000} {
-			buf := New(xBytes)
+			buf := NewBuilder(xBytes)
 			// If we read, this affects buf.off, which is good to test.
 			readBytes, _ := buf.Read(tmp)
 			buf.Grow(growLen)
@@ -443,7 +443,7 @@ func TestGrow(t *testing.T) {
 
 // Was a bug: used to give EOF reading empty slice at EOF.
 func TestReadEmptyAtEOF(t *testing.T) {
-	b := new(Buf)
+	b := new(Builder)
 	slice := make([]byte, 0)
 	n, err := b.Read(slice)
 	if err != nil {
@@ -455,7 +455,7 @@ func TestReadEmptyAtEOF(t *testing.T) {
 }
 
 func TestUnreadByte(t *testing.T) {
-	b := new(Buf)
+	b := new(Builder)
 	b.WriteString("abcdefghijklmnopqrstuvwxyz")
 
 	_, err := b.ReadBytes('m')
@@ -478,7 +478,7 @@ func TestUnreadByte(t *testing.T) {
 
 // Tests that we occasionally compact. Issue 5154.
 func TestBufferGrowth(t *testing.T) {
-	var b = New(nil)
+	var b = NewBuilder(nil)
 	buf := make([]byte, 1024)
 	b.Write(buf[0:1])
 	var cap0 int
@@ -490,7 +490,7 @@ func TestBufferGrowth(t *testing.T) {
 		}
 	}
 	cap1 := b.Cap()
-	// (= New(nil)fer).grow allows for 2x capacity slop before sliding,
+	// (= NewBuilder(nil)fer).grow allows for 2x capacity slop before sliding,
 	// so set our error threshold at 3x.
 	if cap1 > cap0*3 {
 		t.Errorf("buffer cap = %d; too big (grew from %d)", cap1, cap0)
@@ -501,7 +501,7 @@ func TestBufferGrowth(t *testing.T) {
 func BenchmarkBufferNotEmptyWriteRead(b *testing.B) {
 	buf := make([]byte, 1024)
 	for i := 0; i < b.N; i++ {
-		var b = New(nil)
+		var b = NewBuilder(nil)
 		b.Write(buf[0:1])
 		for i := 0; i < 5<<10; i++ {
 			b.Write(buf)
@@ -514,7 +514,7 @@ func BenchmarkBufferNotEmptyWriteRead(b *testing.B) {
 func BenchmarkBufferFullSmallReads(b *testing.B) {
 	buf := make([]byte, 1024)
 	for i := 0; i < b.N; i++ {
-		var b = New(nil)
+		var b = NewBuilder(nil)
 		b.Write(buf)
 		for b.Len()+20 < b.Cap() {
 			b.Write(buf[:10])
@@ -531,7 +531,7 @@ func BenchmarkBufferFullSmallReads(b *testing.B) {
 var IndexBytePortable = indexBytePortable
 var EqualPortable = equalPortable
 
-func (b *Buf) Cap() int {
+func (b *Builder) Cap() int {
 	return cap(b.buf)
 }
 
