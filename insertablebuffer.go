@@ -460,3 +460,13 @@ func (b *Builder) ByteAt(i int) (byte, error) {
 
 	return b.buf[i], nil
 }
+
+func (b *Builder) ResetWith(buf []byte) (n int, err error) {
+	b.Truncate(0)
+	return b.Write(buf)
+}
+
+func (b *Builder) ResetWithString(s string) (n int, err error) {
+	b.Truncate(0)
+	return b.WriteString(s)
+}
